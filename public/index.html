@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastrar Cliente</title>
+    <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+    <h1>Cadastrar Cliente</h1>
+    <p>Incluir cliente</p>
+    <form action="/cadastrar-cliente" method="post">
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" name="nome" required>
+        <br>
+        <label for="cep">CEP:</label>
+        <input type="text" id="cep" name="cep" required>
+        <br>
+        <label for="estado">Estado:</label>
+        <input type="text" id="estado" name="estado" required>
+        <br>
+        <label for="rua">Rua:</label>
+        <input type="text" id="rua" name="rua" required>
+        <br>
+        <label for="CPF">CPF:</label>
+        <input type="text" id="CPF" name="CPF" required>
+        <br>
+
+        <h1>Adicione os meios de contato</h1>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+        <br>
+        <label for="telefone">Telefone:</label>
+        <input type="tel" id="telefone" name="telefone" required>
+        <br>
+        <label for="celular">Celular:</label>
+        <input type="tel" id="celular" name="celular" required>
+        <button type="submit">Cadastrar</button>
+    </form>
+<h2>Clientes Cadastrados</h2>
+    <div id="clientes-lista">
+        <p>Carregando clientes...</p>
+    </div>
+    <button onclick="carregarClientes()">Atualizar Lista</button>
+    <script>
+        async function carregarClientes() {
+            const clientesListaDiv = document.getElementById('clientes-lista');
+            clientesListaDiv.innerHTML = '<p>Carregando clientes...</p>'; // Feedback de carregamento
+
+            try {
+                const response = await fetch('/clientes'); // Faz uma requisição para a rota /clientes do seu servidor
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP! Status: ${response.status}`);
+                }
+                const clientes = await response.json(); // Converte a resposta para JSON
+
+                if (clientes.length === 0) {
+                    clientesListaDiv.innerHTML = '<p>Nenhum cliente cadastrado ainda.</p>';
+                    return;
+                }
+
+                // Cria uma tabela para exibir os clientes
+                let tabelaHTML = '<table>';
+                tabelaHTML += '<thead><tr><th>ID</th><th>Nome</th><th>CPF</th><th>Rua</th><th>Estado</th><th>CEP</th><th>Telefone</th><th>Celular</th><th>Email</th></tr></thead>';
+                tabelaHTML += '<tbody>';
+
+                clientes.forEach(cliente => {
+                    tabelaHTML += `
+                        <tr>
+                            <td>${cliente.ID_Cliente}</td>
+                            <td>${cliente.Nome}</td>
+                            <td>${cliente.CPF}</td>
+                            <td>${cliente.Rua}</td>
+                            <td>${cliente.Estado}</td>
+                            <td>${cliente.CEP}</td>
+                            <td>${cliente.Tel}</td>
+                            <td>${cliente.Cel}</td>
+                            <td>${cliente.Email}</td>
+                        </tr>
+                    `;
+                });
+
+                tabelaHTML += '</tbody></table>';
+                clientesListaDiv.innerHTML = tabelaHTML;
+
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+                clientesListaDiv.innerHTML = '<p>Erro ao carregar clientes. Tente novamente mais tarde.</p>';
+            }
+        }
+
+        // Chama a função para carregar clientes assim que a página é carregada
+        document.addEventListener('DOMContentLoaded', carregarClientes);
+
+        const formCadastro = document.querySelector('form');
+        formCadastro.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const formData = new FormData(formCadastro);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/cadastrar-cliente', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const errorMessage = await response.text();
+                    alert(`Erro ao cadastrar: ${errorMessage}`);
+                    throw new Error(`Erro HTTP! Status: ${response.status} - ${errorMessage}`);
+                }
+
+                alert('Cliente cadastrado com sucesso!');
+                formCadastro.reset(); // Limpa o formulário
+                carregarClientes(); // Recarrega a lista de clientes
+
+            } catch (error) {
+                console.error('Erro ao cadastrar cliente:', error);
+            }
+        });
+
+    </script>
+    <button>Remover Cliente</button>
+</body>
+</html>
+          

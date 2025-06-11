@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adicionar Animal</title>
+    <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+    <h1>Adicione o nome do Animal</h1>
+    <form action="/animal" method="post">
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" name="nome" required>
+        <br>
+        <label for="especie">Espécie:</label>
+        <input type="text" id="especie" name="especie" required>
+        <br>
+        <label for="raca">Raça:</label>
+        <input type="text" id="raca" name="raca" required>
+        <br>
+        <button type="submit">Cadastrar</button>
+        <button type="button">Remover</button>
+    </form>
+    <h2>Animais Cadastrados</h2>
+    <ul>
+     
+    </ul>
+</body>
+</html>
