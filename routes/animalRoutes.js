@@ -1,52 +1,62 @@
 const express = require('express');
 const router = express.Router();
-const dbConnection = require('../config/db');
+const sql = require('mssql');
+const { pool, poolConnect} = require('../config/db');
 
-router.get('/animais', async (req, res) => {
+poolConnect.then(() => {
+    console.log('pronto para uso nas rotas de animal.');
+}).catch(err => console.error('Erro ao conectar o pool nas rotas de animal', err));
+
+
+router.post('/animais', async (req, res) => {
     const { idCliente, nome, especie, raca } = req.body;
     //validacao
     if (!idCliente || !nome || !especie || !raca) {
         return res.status(400).send('Todos os campos são obrigatórios.');
     }
-    let connection;
+
+    const transaction = new sql.Transaction(pool);
     try {
-        connection = await dbConnection.getConnection();
-        await connection.beginTransaction();
+        await transaction.begin();
+        const request = new sql.Request(transaction);
 
-        let [especieRows] = await connection.execute('SELECT ID_Especie FROM especie WHERE Especie = ?', [especie]);
+        request.input('especieNome', sql.VarChar, especie);
+        let resultEspecie = await request.query('SELECT ID_Especie FROM especie WHERE Especie = @especieNome');
         let idEspecie;
-        if (especieRows.length > 0) {
-            idEspecie = especieRows[0].ID_Especie;
+        if (resultEspecie.recordset.length > 0) {
+            idEspecie = resultEspecie.recordset[0].ID_Especie;
         } else {
-            const [result] = await connection.execute('INSERT INTO especie (Especie) VALUES (?)', [especie]);
-            idEspecie = result.insertId;
+            resultEspecie = await request.query('INSERT INTO especie (Especie) OUTPUT INSERTED.ID_Especie VALUES (@especieNome)');
+            idEspecie = resultEspecie.recordset[0].ID_Especie;
         }
 
-        let [racaRows] = await connection.execute('SELECT ID_Raca FROM raca WHERE Nome = ? AND ID_Especie = ?', [raca, idEspecie]);
+        const requestRaca = new sql.Request(transaction);
+        requestRaca.input('racaNome', sql.VarChar, raca);
+        requestRaca.input('idEspecieRaca', sql.Int, idEspecie);
+        let resultRaca = await requestRaca.query('SELECT ID_Raca FROM raca WHERE Nome = @racaNome AND ID_Especie = @idEspecieRaca');
         let idRaca;
-        if (racaRows.length > 0) {
-            idRaca = racaRows[0].ID_Raca;
+        if (resultRaca.recordset.length > 0) {
+            idRaca = resultRaca.recordset[0].ID_Raca;
         } else {
-            const [result] = await connection.execute('INSERT INTO raca (Nome, ID_Especie) VALUES (?, ?)', [raca, idEspecie]);
-            idRaca = result.insertId;
+            resultRaca = await requestRaca.query('INSERT INTO raca (Nome, ID_Especie) OUTPUT INSERTED.ID_Raca VALUES (@racaNome, @idEspecieRaca)');
+            idRaca = resultRaca.recordset[0].ID_Raca;
         }
 
-        const queryAnimal = 'INSERT INTO animal (Nome, ID_cliente, ID_Especie, ID_Raca) VALUES (?, ?, ?, ?)';
-        await connection.execute(queryAnimal, [nome, idCliente, idEspecie, idRaca]);
-
-        await connection.commit(); // Confirma a transação
+        // Insere o Animal
+        const requestAnimal = new sql.Request(transaction);
+        requestAnimal.input('animalNome', sql.VarChar, nome);
+        requestAnimal.input('animalClienteID', sql.Int, idCliente);
+        requestAnimal.input('animalEspecieID', sql.Int, idEspecie);
+        requestAnimal.input('animalRacaID', sql.Int, idRaca);
+        await requestAnimal.query('INSERT INTO animal (Nome, ID_cliente, ID_Especie, ID_Raca) VALUES (@animalNome, @animalClienteID, @animalEspecieID, @animalRacaID)');
+        
+        await transaction.commit();
         res.status(201).send('Animal cadastrado com sucesso!');
 
     } catch (error) {
-        if (connection) {
-            await connection.rollback(); // Desfaz a transação em caso de erro
-        }
+        await transaction.rollback();
         console.error('Erro ao cadastrar animal:', error);
         res.status(500).send('Erro ao cadastrar animal.');
-    } finally {
-        if (connection) {
-            connection.release(); // Libera a conexão
-        }
     }
 });
 

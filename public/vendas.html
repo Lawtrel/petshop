@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Venda</title>
+    <link rel="stylesheet" href="estilos.css">
+    <style>
+        body { max-width: 900px; margin: auto; }
+        .secao { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .secao h2 { margin-top: 0; }
+        #itens-venda table { width: 100%; border-collapse: collapse; }
+        #itens-venda th, #itens-venda td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        #total-venda { text-align: right; font-size: 1.5em; font-weight: bold; }
+        .item-actions button { background-color: red; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Nova Venda</h1>
+
+    <form id="form-venda">
+        <div class="secao">
+            <h2>Dados da Venda</h2>
+            <label for="cliente">Cliente:</label>
+            <select id="cliente" name="cliente" required></select>
+            <br><br>
+            <label for="forma-pagamento">Forma de Pagamento:</label>
+            <select id="forma-pagamento" name="forma-pagamento" required></select>
+        </div>
+
+        <div class="secao">
+            <h2>Adicionar Produtos</h2>
+            <label for="produto-lista">Produto:</label>
+            <select id="produto-lista"></select>
+            <label for="produto-qtd">Qtd:</label>
+            <input type="number" id="produto-qtd" value="1" min="1" style="width: 60px;">
+            <button type="button" id="btn-add-produto">Adicionar Produto</button>
+        </div>
+
+        <div class="secao" id="itens-venda">
+            <h2>Itens da Venda</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Qtd</th>
+                        <th>Preço Unit.</th>
+                        <th>Subtotal</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-tabela-venda">
+                    </tbody>
+            </table>
+        </div>
+        
+        <div class="secao">
+            <div id="total-venda">
+                Total: R$ 0.00
+            </div>
+            <br>
+            <button type="submit" style="width: 100%; padding: 15px; font-size: 1.2em;">Finalizar Venda</button>
+        </div>
+
+        <div class="secao">
+    <h2>Adicionar Serviços</h2>
+    <label for="servico-lista">Serviço:</label>
+    <select id="servico-lista"></select>
+    
+    <label for="animal-lista">Para o Animal:</label>
+    <select id="animal-lista" disabled>
+        <option value="">Selecione um cliente primeiro</option>
+    </select>
+
+    <button type="button" id="btn-add-servico">Adicionar Serviço</button>
+</div>
+    </form>
+
+<script>
+    // Armazenar dados da API para evitar múltiplas chamadas
+    let listaDeProdutos = [];
+    const carrinho = [];
+
+    // FUNÇÃO para carregar dados iniciais (Clientes, Produtos, Formas de Pagamento)
+    async function carregarDadosIniciais() {
+         let listaDeServicos = [];
+        try {
+            // Carregar Clientes
+            const resClientes = await fetch('/api/clientes');
+            const clientes = await resClientes.json();
+            const selectCliente = document.getElementById('cliente');
+            selectCliente.innerHTML = '<option value="">Selecione um Cliente</option>';
+            clientes.forEach(c => {
+                selectCliente.innerHTML += `<option value="${c.ClienteID}">${c.Nome}</option>`;
+            });
+
+            // Carregar Produtos
+            const resProdutos = await fetch('/api/produtos');
+            listaDeProdutos = await resProdutos.json();
+            const selectProduto = document.getElementById('produto-lista');
+            selectProduto.innerHTML = '<option value="">Selecione um Produto</option>';
+            listaDeProdutos.forEach(p => {
+                selectProduto.innerHTML += `<option value="${p.ProdutoID}">${p.NomeProduto} (R$ ${p.Preco})</option>`;
+            });
+
+            // Carregar Formas de Pagamento
+            const resPagamento = await fetch('/api/formas-pagamento');
+            const formasPagamento = await resPagamento.json();
+            const selectPagamento = document.getElementById('forma-pagamento');
+            selectPagamento.innerHTML = '<option value="">Selecione um Pagamento</option>';
+            formasPagamento.forEach(fp => {
+                selectPagamento.innerHTML += `<option value="${fp.FormaPagamentoID}">${fp.NomeFormaPagamento}</option>`;
+            });
+            // Carregar Serviços
+            const resServicos = await fetch('/api/servicos');
+            listaDeServicos = await resServicos.json();
+            const selectServico = document.getElementById('servico-lista');
+            selectServico.innerHTML = '<option value="">Selecione um Serviço</option>';
+            listaDeServicos.forEach(s => {
+                selectServico.innerHTML += `<option value="<span class="math-inline">\{s\.ServicoID\}"\></span>{s.NomeServico} (R$ ${s.Preco})</option>`;
+        });
+
+        } catch (error) {
+            console.error("Erro ao carregar dados iniciais:", error);
+            alert("Não foi possível carregar os dados da página.");
+        }
+    }
+
+    // FUNÇÃO para renderizar o carrinho na tela
+    function renderizarCarrinho() {
+        const corpoTabela = document.getElementById('corpo-tabela-venda');
+        corpoTabela.innerHTML = '';
+        let valorTotal = 0;
+
+        carrinho.forEach((item, index) => {
+            const subtotal = item.quantidade * item.preco;
+            valorTotal += subtotal;
+
+            corpoTabela.innerHTML += `
+                <tr data-index="${index}">
+                    <td>${item.nome}</td>
+                    <td>${item.quantidade}</td>
+                    <td>R$ ${item.preco.toFixed(2)}</td>
+                    <td>R$ ${subtotal.toFixed(2)}</td>
+                    <td class="item-actions"><button type="button" onclick="removerItem(${index})">Remover</button></td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('total-venda').textContent = `Total: R$ ${valorTotal.toFixed(2)}`;
+    }
+    
+    // FUNÇÃO para adicionar um produto ao carrinho
+    document.getElementById('btn-add-produto').addEventListener('click', () => {
+        const produtoId = document.getElementById('produto-lista').value;
+        const quantidade = parseInt(document.getElementById('produto-qtd').value);
+
+        if (!produtoId || quantidade <= 0) {
+            alert('Selecione um produto e uma quantidade válida.');
+            return;
+        }
+
+        const produtoSelecionado = listaDeProdutos.find(p => p.ProdutoID == produtoId);
+
+        carrinho.push({
+            tipo: 'produto',
+            id: produtoSelecionado.ProdutoID,
+            nome: produtoSelecionado.NomeProduto,
+            quantidade: quantidade,
+            preco: produtoSelecionado.Preco
+        });
+
+        renderizarCarrinho();
+    });
+
+    // FUNÇÃO para remover um item do carrinho
+    function removerItem(index) {
+        carrinho.splice(index, 1);
+        renderizarCarrinho();
+    }
+
+    // FUNÇÃO para finalizar a venda
+    document.getElementById('form-venda').addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const clienteId = document.getElementById('cliente').value;
+        const formaPagamentoId = document.getElementById('forma-pagamento').value;
+
+        if (!clienteId || !formaPagamentoId || carrinho.length === 0) {
+            alert('Selecione um cliente, forma de pagamento e adicione itens à venda.');
+            return;
+        }
+        
+        const valorTotal = carrinho.reduce((total, item) => total + (item.quantidade * item.preco), 0);
+        
+        const vendaPayload = {
+            ClienteID: parseInt(clienteId),
+            FormaPagamentoID: parseInt(formaPagamentoId),
+            ValorTotal: valorTotal,
+            produtos: carrinho.filter(i => i.tipo === 'produto').map(p => ({
+                ProdutoID: p.id,
+                Quantidade: p.quantidade,
+                PrecoUnitario: p.preco
+            })),
+            servicos: [] // A lógica para serviços pode ser adicionada aqui
+        };
+
+        try {
+            const response = await fetch('/api/vendas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(vendaPayload)
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                alert(`Venda #${result.vendaId} registrada com sucesso!`);
+                window.location.reload(); // Recarrega a página para uma nova venda
+            } else {
+                throw new Error(result.message || 'Erro ao registrar venda.');
+            }
+        } catch (error) {
+            console.error('Erro ao finalizar venda:', error);
+            alert(`Erro: ${error.message}`);
+        }
+    });
+
+    // Carrega os animais quando um cliente for selecionado
+    document.getElementById('cliente').addEventListener('change', async (event) => {
+    const clienteId = event.target.value;
+    const selectAnimal = document.getElementById('animal-lista');
+
+    if (!clienteId) {
+        selectAnimal.innerHTML = '<option value="">Selecione um cliente primeiro</option>';
+        selectAnimal.disabled = true;
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/clientes/${clienteId}/animais`);
+        const animais = await response.json();
+
+        selectAnimal.innerHTML = '<option value="">Selecione um Animal</option>';
+        if (animais.length > 0) {
+            animais.forEach(animal => {
+                selectAnimal.innerHTML += `<option value="<span class="math-inline">\{animal\.AnimalID\}"\></span>{animal.Nome}</option>`;
+            });
+            selectAnimal.disabled = false;
+        } else {
+            selectAnimal.innerHTML = '<option value="">Nenhum animal cadastrado</option>';
+            selectAnimal.disabled = true;
+        }
+    } catch (error) {
+        console.error('Erro ao buscar animais:', error);
+    }
+    });
+
+    document.getElementById('btn-add-servico').addEventListener('click', () => {
+    const servicoId = document.getElementById('servico-lista').value;
+    const animalId = document.getElementById('animal-lista').value;
+    const animalNome = document.getElementById('animal-lista').options[document.getElementById('animal-lista').selectedIndex].text;
+
+    if (!servicoId || !animalId) {
+        alert('Selecione um serviço e um animal.');
+        return;
+    }
+
+    const servicoSelecionado = listaDeServicos.find(s => s.ServicoID == servicoId);
+
+    carrinho.push({
+        tipo: 'servico',
+        id: servicoSelecionado.ServicoID,
+        nome: `<span class="math-inline">\{servicoSelecionado\.NomeServico\} \(</span>{animalNome})`, // ex: Banho (Rex)
+        quantidade: 1, // Serviço é sempre 1
+        preco: servicoSelecionado.Preco,
+        animalId: parseInt(animalId) // Armazena o ID do animal
+    });
+
+    renderizarCarrinho();
+});
+
+    // Carrega os dados quando a página é aberta
+    document.addEventListener('DOMContentLoaded', carregarDadosIniciais);
+</script>
+
+</body>
+</html>

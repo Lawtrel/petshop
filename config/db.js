@@ -1,22 +1,23 @@
-const sql = require('mysql2/promise');
+require('dotenv').config();
+const sql = require('mssql');
 const config = {
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'petshop'
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_DATABASE,
+    options: {
+        encrypt: true,
+    }
+    
 };
 
-const connectDB = sql.createPool(config);
-async function connectDB() {
-    try {
-        const connection = await connectDB.getConnection();
-        console.log('Conexão bem-sucedida ao banco de dados!');
-        connection.release(); // Libera a conexão após o uso
-    } catch (error) {
-        console.error('Erro ao conectar ao banco de dados:', error);
-        process.exit(1); // Encerra o processo se a conexão falhar
-    }
-    return connectDB;
-}
+const pool = new sql.ConnectionPool(config);
+const poolConnect = pool.connect();
+pool.on('error', err => {
+    console.error('Erro no Pool de Conexões SQL:', err);
+});
 
-module.exports = connectDB;
+module.exports = {
+    pool,
+    poolConnect
+};

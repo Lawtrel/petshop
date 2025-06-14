@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produtos</title>
+    <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+    <h1>Cadastrar Produtos</h1>
+    <p>Incluir produto</p>
+    <form>
+        <label for="nome">Nome:</label>
+        <input type="text" id="nome" name="nome" required>
+        <br>
+
+        <label for="preco">Preço:</label>
+        <input type="number" id="preco" name="preco" step="0.01" required>
+        <br>
+
+        <label for="quantidade">Quantidade:</label>
+        <input type="number" id="quantidade" name="quantidade" required>
+        <br>
+
+        <button type="submit">Cadastrar</button>
+    </form>
+
+    <script>
+        document.querySelector('form').addEventListener('submit', async (event) => {
+            // 1. Impede que o formulário recarregue a página
+            event.preventDefault();
+
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            // 2. Cria um objeto JavaScript com os dados do formulário
+            const data = {
+                NomeProduto: formData.get('nome'),
+                Preco: parseFloat(formData.get('preco')),
+                QuantidadeEstoque: parseInt(formData.get('quantidade'))
+            };
+
+            try {
+                // 3. Envia os dados para a API usando fetch
+                const response = await fetch('/api/produtos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const resultText = await response.text();
+                alert(resultText); // Exibe a resposta do servidor (ex: "Produto cadastrado com sucesso!")
+
+                if (response.ok) {
+                    form.reset(); // Limpa o formulário se o cadastro foi bem-sucedido
+                }
+            } catch (error) {
+                console.error('Erro ao cadastrar produto:', error);
+                alert('Ocorreu um erro ao conectar com o servidor.');
+            }
+        });
+    </script>
+</body>
+</html>

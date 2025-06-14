@@ -9,7 +9,7 @@
 <body>
     <h1>Cadastrar Cliente</h1>
     <p>Incluir cliente</p>
-    <form action="/cadastrar-cliente" method="post">
+    <form action="/api/cadastrar-cliente" method="post">
         <label for="nome">Nome:</label>
         <input type="text" id="nome" name="nome" required>
         <br>
@@ -48,7 +48,7 @@
             clientesListaDiv.innerHTML = '<p>Carregando clientes...</p>'; // Feedback de carregamento
 
             try {
-                const response = await fetch('/clientes'); // Faz uma requisição para a rota /clientes do seu servidor
+                const response = await fetch('/api/clientes'); // Faz uma requisição para a rota /clientes do seu servidor
                 if (!response.ok) {
                     throw new Error(`Erro HTTP! Status: ${response.status}`);
                 }

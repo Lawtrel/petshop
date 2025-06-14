@@ -33,7 +33,7 @@
         async function carregarClientes() {
             const selectCliente = document.getElementById('cliente');
             try {
-                const response = await fetch('/clientes');
+                const response = await fetch('/api/clientes');
                 const clientes = await response.json();
 
                 selectCliente.innerHTML = '<option value="">Selecione o Dono</option>'; // Limpa e adiciona a opção padrão
@@ -59,7 +59,7 @@
             const data = Object.fromEntries(formData.entries());
 
             try {
-                const response = await fetch('/animal', {
+                const response = await fetch('/api/animal', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
