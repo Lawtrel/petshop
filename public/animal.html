@@ -3,84 +3,238 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adicionar Animal</title>
+    <title>Gerenciar Animais</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
-    <h1>Adicionar Animal</h1>
-    <form id="animal-form">
-        <label for="cliente">Dono do Animal:</label>
-        <select id="cliente" name="idCliente" required>
-            <option value="">Carregando donos...</option>
-        </select>
-        <br>
-        <label for="nome">Nome do Animal:</label>
-        <input type="text" id="nome" name="nome" required>
-        <br>
-        <label for="especie">Espécie:</label>
-        <input type="text" id="especie" name="especie" required>
-        <br>
-        <label for="raca">Raça:</label>
-        <input type="text" id="raca" name="raca" required>
-        <br>
-        <button type="submit">Cadastrar</button>
-    </form>
-    <h2>Animais Cadastrados</h2>
-    <div id="animais-lista"></div>
+    <div class="container">
+        <h1 id="main-title">Gerenciar Animais</h1>
+        <p>Incluir, Editar e Visualizar Animais</p>
+
+        <div class="section">
+            <h2 id="form-title">Cadastrar Novo Animal</h2>
+            <form id="animal-form">
+                <input type="hidden" id="animal-id">
+                <div class="form-group">
+                    <label for="cliente">Dono do Animal:</label>
+                    <select id="cliente" name="idCliente" required>
+                        <option value="">Carregando donos...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="nome">Nome do Animal:</label>
+                    <input type="text" id="nome" name="nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="especie">Espécie:</label>
+                    <input type="text" id="especie" name="especie" required>
+                </div>
+                <div class="form-group">
+                    <label for="raca">Raça:</label>
+                    <input type="text" id="raca" name="raca">
+                </div>
+                <!-- REMOVIDO: Campo Data de Nascimento, pois não está mais na estrutura do DB -->
+                <button type="submit" id="submit-button">Cadastrar</button>
+                <button type="button" id="cancel-edit" style="display: none;">Cancelar Edição</button>
+            </form>
+        </div>
+
+        <div class="selection-section">
+            <h2>Remover Animal por Seleção</h2>
+            <label for="select-animal-remover">Selecionar Animal:</label>
+            <select id="select-animal-remover">
+                <option value="">-- Selecione um Animal --</option>
+            </select>
+            <button onclick="deleteAnimalSelecionado()">Remover Animal Selecionado</button>
+        </div>
+
+        <div class="section">
+            <h2>Animais Cadastrados</h2>
+            <div id="animais-lista">
+            </div>
+        </div>
+    </div>
 
     <script>
         // Função para carregar os clientes no dropdown
         async function carregarClientes() {
             const selectCliente = document.getElementById('cliente');
             try {
-                const response = await fetch('/api/clientes');
+                const response = await fetch('/api/clientes'); // Endpoint para clientes
                 const clientes = await response.json();
 
-                selectCliente.innerHTML = '<option value="">Selecione o Dono</option>'; // Limpa e adiciona a opção padrão
-
+                selectCliente.innerHTML = '<option value="">Selecione o Dono</option>';
                 clientes.forEach(cliente => {
                     const option = document.createElement('option');
-                    option.value = cliente.ID_Cliente;
+                    option.value = cliente.ClienteID;
                     option.textContent = `${cliente.Nome} (CPF: ${cliente.CPF})`;
                     selectCliente.appendChild(option);
                 });
             } catch (error) {
                 console.error('Erro ao carregar clientes:', error);
-                selectCliente.innerHTML = '<option value="">Erro ao carregar</option>';
+                selectCliente.innerHTML = '<option value="">Erro ao carregar donos</option>';
+                alert('Erro ao carregar lista de donos. Verifique a conexão com o servidor.');
             }
         }
 
-        // Função para lidar com o envio do formulário
-        document.getElementById('animal-form').addEventListener('submit', async (event) => {
-            event.preventDefault(); // Impede o envio padrão do formulário
+        // Função para carregar a lista de animais
+        async function loadAnimais() {
+            const container = document.getElementById('animais-lista');
+            container.innerHTML = 'Carregando animais...';
 
-            const form = event.target;
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
+            const selectAnimalRemover = document.getElementById('select-animal-remover');
+            selectAnimalRemover.innerHTML = '<option value="">-- Selecione um Animal --</option>'; // Reset dropdown
 
             try {
-                const response = await fetch('/api/animal', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                const response = await fetch('/api/animais'); // Endpoint para listar animais
+                const animais = await response.json();
+
+                if (animais.length === 0) {
+                    container.innerHTML = '<p>Nenhum animal cadastrado.</p>';
+                    return;
+                }
+
+                let animaisHtml = '';
+                animais.forEach(animal => {
+                    // REMOVIDO: DataNascimento, pois não está mais na estrutura do DB
+                    animaisHtml += `
+                        <div class="animal-item">
+                            <strong>ID:</strong> ${animal.AnimalID}<br>
+                            <strong>Nome:</strong> ${animal.NomeAnimal}<br> <!-- Usar NomeAnimal do backend -->
+                            <strong>Dono:</strong> ${animal.NomeCliente || 'Desconhecido'}<br>
+                            <strong>Espécie:</strong> ${animal.Especie || 'N/A'}<br> <!-- Usar Especie do backend -->
+                            <strong>Raça:</strong> ${animal.Raca || 'N/A'}<br> <!-- Usar Raca do backend -->
+                            <button class="edit-button"
+                                onclick="editAnimal(${animal.AnimalID}, ${animal.ClienteID}, '${animal.NomeAnimal}', '${animal.Especie}', '${animal.Raca || ''}')">
+                                Editar
+                            </button>
+                            <button class="delete-button" onclick="deleteAnimal(${animal.AnimalID})">Excluir</button>
+                            <hr>
+                        </div>
+                    `;
+                    // Populate the new dropdown for selection-based removal
+                    const option = document.createElement('option');
+                    option.value = animal.AnimalID;
+                    option.textContent = `${animal.NomeAnimal} (ID: ${animal.AnimalID}, Dono: ${animal.NomeCliente || 'Desconhecido'})`;
+                    selectAnimalRemover.appendChild(option);
+                });
+                container.innerHTML = animaisHtml;
+
+            } catch (error) {
+                console.error('Erro ao carregar animais:', error);
+                container.innerHTML = 'Erro ao carregar animais.';
+                alert('Erro ao carregar lista de animais. Verifique a conexão com o servidor.');
+                selectAnimalRemover.innerHTML = '<option value="">-- Erro ao carregar --</option>';
+            }
+        }
+
+        // Função para lidar com o envio do formulário (Cadastro ou Edição)
+        document.getElementById('animal-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const animalId = document.getElementById('animal-id').value;
+            const data = {
+                ClienteID: parseInt(document.getElementById('cliente').value),
+                Nome: document.getElementById('nome').value,
+                Especie: document.getElementById('especie').value,
+                Raca: document.getElementById('raca').value || null // Enviar null se vazio
+                // REMOVIDO: DataNascimento
+            };
+
+            let url = '/api/animais';
+            let method = 'POST';
+
+            if (animalId) {
+                url = `/api/animais/${animalId}`;
+                method = 'PUT';
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data),
                 });
 
                 const result = await response.text();
-                alert(result); // Mostra a mensagem de sucesso ou erro
+                alert(result);
 
                 if (response.ok) {
-                    form.reset(); // Limpa o formulário
+                    document.getElementById('animal-form').reset();
+                    document.getElementById('animal-id').value = '';
+                    document.getElementById('form-title').textContent = 'Cadastrar Novo Animal';
+                    document.getElementById('submit-button').textContent = 'Cadastrar';
+                    document.getElementById('cancel-edit').style.display = 'none';
+                    loadAnimais(); // Recarrega a lista
+                    carregarClientes(); // Recarrega o dropdown de clientes, caso algum cliente tenha sido adicionado/removido
                 }
             } catch (error) {
-                console.error('Erro ao cadastrar animal:', error);
-                alert('Ocorreu um erro. Tente novamente.');
+                console.error('Erro ao salvar animal:', error);
+                alert('Ocorreu um erro ao salvar o animal. Verifique o console para mais detalhes.');
             }
         });
 
-        // Carrega os clientes quando a página é carregada
-        document.addEventListener('DOMContentLoaded', carregarClientes);
+        // Função para preencher o formulário para edição
+        function editAnimal(id, clienteId, nome, especie, raca) { // REMOVIDO: dataNascimento
+            document.getElementById('animal-id').value = id;
+            document.getElementById('cliente').value = clienteId;
+            document.getElementById('nome').value = nome;
+            document.getElementById('especie').value = especie;
+            document.getElementById('raca').value = raca;
+            // REMOVIDO: document.getElementById('dataNascimento').value = dataNascimento;
+
+            document.getElementById('form-title').textContent = 'Editar Animal';
+            document.getElementById('submit-button').textContent = 'Atualizar';
+            document.getElementById('cancel-edit').style.display = 'inline-block';
+        }
+
+        // Função para cancelar edição
+        document.getElementById('cancel-edit').addEventListener('click', () => {
+            document.getElementById('animal-form').reset();
+            document.getElementById('animal-id').value = '';
+            document.getElementById('form-title').textContent = 'Cadastrar Novo Animal';
+            document.getElementById('submit-button').textContent = 'Cadastrar';
+            document.getElementById('cancel-edit').style.display = 'none';
+        });
+
+        // Função para remover animal
+        async function deleteAnimal(id) {
+            if (!confirm('Tem certeza que deseja excluir este animal? Isso pode afetar vendas de serviços associadas.')) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/animais/${id}`, {
+                    method: 'DELETE',
+                });
+                const result = await response.text();
+                alert(result);
+                if (response.ok) {
+                    loadAnimais(); // Recarrega a lista e o dropdown
+                }
+            } catch (error) {
+                console.error('Erro ao remover animal:', error);
+                alert('Ocorreu um erro ao remover o animal. Verifique o console.');
+            }
+        }
+
+        // Nova função para remover animal selecionado no dropdown
+        async function deleteAnimalSelecionado() {
+            const selectElement = document.getElementById('select-animal-remover');
+            const animalId = selectElement.value;
+
+            if (!animalId) {
+                alert('Por favor, selecione um animal para remover.');
+                return;
+            }
+
+            await deleteAnimal(animalId); // Usa a função de remoção já existente
+        }
+
+        // Carrega clientes e animais quando a página é carregada
+        document.addEventListener('DOMContentLoaded', async () => {
+            await carregarClientes(); // Primeiro carrega os clientes
+            loadAnimais(); // Depois carrega os animais
+        });
     </script>
 </body>
 </html>

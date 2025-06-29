@@ -3,64 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Produtos</title>
+    <title>Gerenciar Produtos</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
-    <h1>Cadastrar Produtos</h1>
-    <p>Incluir produto</p>
-    <form>
-        <label for="nome">Nome:</label>
-        <input type="text" id="nome" name="nome" required>
-        <br>
+    <div class="container">
+        <h1 id="main-title">Gerenciar Produtos</h1>
+        <p>Incluir, Editar e Visualizar Produtos</p>
 
-        <label for="preco">Preço:</label>
-        <input type="number" id="preco" name="preco" step="0.01" required>
-        <br>
+        <div class="section">
+            <h2 id="form-title">Cadastrar Novo Produto</h2>
+            <form id="product-form">
+                <input type="hidden" id="product-id"> <!-- Campo escondido para o ID do produto (para edição) -->
+                <div class="form-group">
+                    <label for="nome">Nome:</label>
+                    <input type="text" id="nome" name="nome" required>
+                </div>
+                <div class="form-group">
+                    <label for="preco">Preço:</label>
+                    <input type="number" id="preco" name="preco" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="quantidade">Quantidade:</label>
+                    <input type="number" id="quantidade" name="quantidade" required>
+                </div>
+                <button type="submit" id="submit-button">Cadastrar</button>
+                <button type="button" id="cancel-edit" style="display: none;">Cancelar Edição</button>
+            </form>
+        </div>
 
-        <label for="quantidade">Quantidade:</label>
-        <input type="number" id="quantidade" name="quantidade" required>
-        <br>
-
-        <button type="submit">Cadastrar</button>
-    </form>
+        <div class="section">
+            <h2>Lista de Produtos</h2>
+            <div id="products-list-container">
+                <!-- A lista de produtos será carregada aqui -->
+            </div>
+        </div>
+    </div>
 
     <script>
-        document.querySelector('form').addEventListener('submit', async (event) => {
-            // 1. Impede que o formulário recarregue a página
+        document.getElementById('product-form').addEventListener('submit', async (event) => {
             event.preventDefault();
 
-            const form = event.target;
-            const formData = new FormData(form);
-            
-            // 2. Cria um objeto JavaScript com os dados do formulário
+            const productId = document.getElementById('product-id').value;
             const data = {
-                NomeProduto: formData.get('nome'),
-                Preco: parseFloat(formData.get('preco')),
-                QuantidadeEstoque: parseInt(formData.get('quantidade'))
+                NomeProduto: document.getElementById('nome').value,
+                Preco: parseFloat(document.getElementById('preco').value),
+                QuantidadeEstoque: parseInt(document.getElementById('quantidade').value)
             };
 
+            let url = '/api/produtos';
+            let method = 'POST';
+
+            if (productId) {
+                url = `/api/produtos/${productId}`;
+                method = 'PUT';
+            }
+
             try {
-                // 3. Envia os dados para a API usando fetch
-                const response = await fetch('/api/produtos', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
 
                 const resultText = await response.text();
-                alert(resultText); // Exibe a resposta do servidor (ex: "Produto cadastrado com sucesso!")
+                alert(resultText);
 
                 if (response.ok) {
-                    form.reset(); // Limpa o formulário se o cadastro foi bem-sucedido
+                    document.getElementById('product-form').reset();
+                    document.getElementById('product-id').value = ''; // Limpa o ID escondido
+                    document.getElementById('form-title').textContent = 'Cadastrar Novo Produto';
+                    document.getElementById('submit-button').textContent = 'Cadastrar';
+                    document.getElementById('cancel-edit').style.display = 'none';
+                    // === MUDANÇA AQUI: SEMPRE RECARREGA A LISTA NA MESMA TELA, SEM CONDIÇÃO ===
+                    loadProducts(); 
                 }
             } catch (error) {
-                console.error('Erro ao cadastrar produto:', error);
+                console.error('Erro ao salvar produto:', error);
                 alert('Ocorreu um erro ao conectar com o servidor.');
             }
         });
+
+        async function loadProducts() {
+            const container = document.getElementById('products-list-container');
+            container.innerHTML = 'Carregando produtos...';
+
+            try {
+                const response = await fetch('/api/produtos');
+                const products = await response.json();
+
+                if (products.length === 0) {
+                    container.innerHTML = '<p>Nenhum produto cadastrado.</p>';
+                    return;
+                }
+
+                let productsHtml = '';
+                products.forEach(product => {
+                    productsHtml += `
+                        <div class="product-item">
+                            <strong>ID:</strong> ${product.ProdutoID}<br>
+                            <strong>Nome:</strong> ${product.NomeProduto}<br>
+                            <strong>Preço:</strong> R$ ${product.Preco.toFixed(2)}<br>
+                            <strong>Quantidade em Estoque:</strong> ${product.QuantidadeEstoque}<br>
+                            <button class="edit-button" onclick="editProduct(${product.ProdutoID}, '${product.NomeProduto}', ${product.Preco}, ${product.QuantidadeEstoque})">Editar</button>
+                            <button class="delete-button" onclick="deleteProduct(${product.ProdutoID})">Excluir</button>
+                            <hr>
+                        </div>
+                    `;
+                });
+                container.innerHTML = productsHtml;
+
+            } catch (error) {
+                console.error('Erro ao carregar produtos:', error);
+                container.innerHTML = 'Erro ao carregar produtos.';
+            }
+        }
+
+        function editProduct(id, nome, preco, quantidade) {
+            document.getElementById('product-id').value = id;
+            document.getElementById('nome').value = nome;
+            document.getElementById('preco').value = preco;
+            document.getElementById('quantidade').value = quantidade;
+
+            document.getElementById('form-title').textContent = 'Editar Produto';
+            document.getElementById('submit-button').textContent = 'Atualizar';
+            document.getElementById('cancel-edit').style.display = 'inline-block';
+        }
+
+        document.getElementById('cancel-edit').addEventListener('click', () => {
+            document.getElementById('product-form').reset();
+            document.getElementById('product-id').value = '';
+            document.getElementById('form-title').textContent = 'Cadastrar Novo Produto';
+            document.getElementById('submit-button').textContent = 'Cadastrar';
+            document.getElementById('cancel-edit').style.display = 'none';
+        });
+
+        async function deleteProduct(id) {
+            if (!confirm('Tem certeza que deseja excluir este produto?')) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/produtos/${id}`, {
+                    method: 'DELETE'
+                });
+                const resultText = await response.text();
+                alert(resultText);
+                if (response.ok) {
+                    loadProducts();
+                }
+            } catch (error) {
+                console.error('Erro ao deletar produto:', error);
+                alert('Ocorreu um erro ao conectar com o servidor.');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadProducts);
     </script>
 </body>
 </html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Tipos de Serviço</title>
+    <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+    <div class="container">
+        <h1 id="main-title">Gerenciar Tipos de Serviço</h1>
+        <p>Incluir, Editar e Visualizar Tipos de Serviço</p>
+
+        <div class="section">
+            <h2 id="form-title">Cadastrar Novo Tipo de Serviço</h2>
+            <form id="tipo-servico-form">
+                <input type="hidden" id="tipo-servico-id">
+                <div class="form-group">
+                    <label for="nomeTipoServico">Nome do Tipo de Serviço:</label>
+                    <input type="text" id="nomeTipoServico" name="nomeTipoServico" required>
+                </div>
+                <button type="submit" id="submit-button">Cadastrar</button>
+                <button type="button" id="cancel-edit" style="display: none;">Cancelar Edição</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <h2>Tipos de Serviço Cadastrados</h2>
+            <div id="tipos-servico-lista">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('tipo-servico-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const tipoServicoId = document.getElementById('tipo-servico-id').value;
+            const data = {
+                NomeTipoServico: document.getElementById('nomeTipoServico').value // Usa NomeTipoServico
+            };
+
+            let url = '/api/tipos-servico';
+            let method = 'POST';
+
+            if (tipoServicoId) {
+                url = `/api/tipos-servico/${tipoServicoId}`;
+                method = 'PUT';
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const resultText = await response.text();
+                alert(resultText);
+
+                if (response.ok) {
+                    document.getElementById('tipo-servico-form').reset();
+                    document.getElementById('tipo-servico-id').value = '';
+                    document.getElementById('form-title').textContent = 'Cadastrar Novo Tipo de Serviço';
+                    document.getElementById('submit-button').textContent = 'Cadastrar';
+                    document.getElementById('cancel-edit').style.display = 'none';
+                    loadTiposServico(); // Recarrega a lista
+                }
+            } catch (error) {
+                console.error('Erro ao salvar tipo de serviço:', error);
+                alert('Ocorreu um erro ao conectar com o servidor.');
+            }
+        });
+
+        async function loadTiposServico() {
+            const container = document.getElementById('tipos-servico-lista');
+            container.innerHTML = 'Carregando tipos de serviço...';
+
+            try {
+                const response = await fetch('/api/tipos-servico');
+                const tiposServico = await response.json();
+
+                if (tiposServico.length === 0) {
+                    container.innerHTML = '<p>Nenhum tipo de serviço cadastrado.</p>';
+                    return;
+                }
+
+                let tiposServicoHtml = '';
+                tiposServico.forEach(ts => {
+                    tiposServicoHtml += `
+                        <div class="item">
+                            <strong>ID:</strong> ${ts.TipoServicoID}<br>
+                            <strong>Nome:</strong> ${ts.NomeTipoServico}<br> <!-- Usa NomeTipoServico -->
+                            <button class="edit-button" onclick="editTipoServico(${ts.TipoServicoID}, '${ts.NomeTipoServico}')">Editar</button>
+                            <button class="delete-button" onclick="deleteTipoServico(${ts.TipoServicoID})">Excluir</button>
+                            <hr>
+                        </div>
+                    `;
+                });
+                container.innerHTML = tiposServicoHtml;
+
+            } catch (error) {
+                console.error('Erro ao carregar tipos de serviço:', error);
+                container.innerHTML = 'Erro ao carregar tipos de serviço.';
+                alert('Erro ao carregar lista de tipos de serviço. Verifique a conexão com o servidor.');
+            }
+        }
+
+        function editTipoServico(id, nome) { // 'nome' agora é NomeTipoServico
+            document.getElementById('tipo-servico-id').value = id;
+            document.getElementById('nomeTipoServico').value = nome; // Usa nomeTipoServico
+
+            document.getElementById('form-title').textContent = 'Editar Tipo de Serviço';
+            document.getElementById('submit-button').textContent = 'Atualizar';
+            document.getElementById('cancel-edit').style.display = 'inline-block';
+        }
+
+        document.getElementById('cancel-edit').addEventListener('click', () => {
+            document.getElementById('tipo-servico-form').reset();
+            document.getElementById('tipo-servico-id').value = '';
+            document.getElementById('form-title').textContent = 'Cadastrar Novo Tipo de Serviço';
+            document.getElementById('submit-button').textContent = 'Cadastrar';
+            document.getElementById('cancel-edit').style.display = 'none';
+        });
+
+        async function deleteTipoServico(id) {
+            if (!confirm('Tem certeza que deseja excluir este tipo de serviço? Isso pode afetar serviços associados.')) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/tipos-servico/${id}`, {
+                    method: 'DELETE'
+                });
+                const resultText = await response.text();
+                alert(resultText);
+                if (response.ok) {
+                    loadTiposServico();
+                }
+            } catch (error) {
+                console.error('Erro ao deletar tipo de serviço:', error);
+                alert('Ocorreu um erro ao conectar com o servidor.');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadTiposServico);
+    </script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Formas de Pagamento</title>
+    <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+    <div class="container">
+        <h1 id="main-title">Gerenciar Formas de Pagamento</h1>
+        <p>Incluir, Editar e Visualizar Formas de Pagamento</p>
+
+        <div class="section">
+            <h2 id="form-title">Cadastrar Nova Forma de Pagamento</h2>
+            <form id="forma-pagamento-form">
+                <input type="hidden" id="forma-pagamento-id"> <div class="form-group">
+                    <label for="nomeFormaPagamento">Nome da Forma de Pagamento:</label>
+                    <input type="text" id="nomeFormaPagamento" name="nomeFormaPagamento" required>
+                </div>
+                <button type="submit" id="submit-button">Cadastrar</button>
+                <button type="button" id="cancel-edit" style="display: none;">Cancelar Edição</button>
+            </form>
+        </div>
+
+        <div class="section">
+            <h2>Formas de Pagamento Cadastradas</h2>
+            <div id="formas-pagamento-lista">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('forma-pagamento-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const formaPagamentoId = document.getElementById('forma-pagamento-id').value;
+            const data = {
+                NomeFormaPagamento: document.getElementById('nomeFormaPagamento').value
+            };
+
+            let url = '/api/formas-pagamento';
+            let method = 'POST';
+
+            if (formaPagamentoId) {
+                url = `/api/formas-pagamento/${formaPagamentoId}`;
+                method = 'PUT';
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const resultText = await response.text();
+                alert(resultText);
+
+                if (response.ok) {
+                    document.getElementById('forma-pagamento-form').reset();
+                    document.getElementById('forma-pagamento-id').value = ''; // Limpa o ID escondido
+                    document.getElementById('form-title').textContent = 'Cadastrar Nova Forma de Pagamento';
+                    document.getElementById('submit-button').textContent = 'Cadastrar';
+                    document.getElementById('cancel-edit').style.display = 'none';
+                    loadFormasPagamento(); // Recarrega a lista
+                }
+            } catch (error) {
+                console.error('Erro ao salvar forma de pagamento:', error);
+                alert('Ocorreu um erro ao conectar com o servidor.');
+            }
+        });
+
+        async function loadFormasPagamento() {
+            const container = document.getElementById('formas-pagamento-lista');
+            container.innerHTML = 'Carregando formas de pagamento...';
+
+            try {
+                const response = await fetch('/api/formas-pagamento');
+                const formasPagamento = await response.json();
+
+                if (formasPagamento.length === 0) {
+                    container.innerHTML = '<p>Nenhuma forma de pagamento cadastrada.</p>';
+                    return;
+                }
+
+                let formasPagamentoHtml = '';
+                formasPagamento.forEach(fp => {
+                    formasPagamentoHtml += `
+                        <div class="item">
+                            <strong>ID:</strong> ${fp.FormaPagamentoID}<br>
+                            <strong>Nome:</strong> ${fp.NomeFormaPagamento}<br>
+                            <button class="edit-button" onclick="editFormaPagamento(${fp.FormaPagamentoID}, '${fp.NomeFormaPagamento}')">Editar</button>
+                            <button class="delete-button" onclick="deleteFormaPagamento(${fp.FormaPagamentoID})">Excluir</button>
+                            <hr>
+                        </div>
+                    `;
+                });
+                container.innerHTML = formasPagamentoHtml;
+
+            } catch (error) {
+                console.error('Erro ao carregar formas de pagamento:', error);
+                container.innerHTML = 'Erro ao carregar formas de pagamento.';
+            }
+        }
+
+        function editFormaPagamento(id, nome) {
+            document.getElementById('forma-pagamento-id').value = id;
+            document.getElementById('nomeFormaPagamento').value = nome;
+
+            document.getElementById('form-title').textContent = 'Editar Forma de Pagamento';
+            document.getElementById('submit-button').textContent = 'Atualizar';
+            document.getElementById('cancel-edit').style.display = 'inline-block';
+        }
+
+        document.getElementById('cancel-edit').addEventListener('click', () => {
+            document.getElementById('forma-pagamento-form').reset();
+            document.getElementById('forma-pagamento-id').value = '';
+            document.getElementById('form-title').textContent = 'Cadastrar Nova Forma de Pagamento';
+            document.getElementById('submit-button').textContent = 'Cadastrar';
+            document.getElementById('cancel-edit').style.display = 'none';
+        });
+
+        async function deleteFormaPagamento(id) {
+            if (!confirm('Tem certeza que deseja excluir esta forma de pagamento? Isso pode afetar vendas associadas.')) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/formas-pagamento/${id}`, {
+                    method: 'DELETE'
+                });
+                const resultText = await response.text();
+                alert(resultText);
+                if (response.ok) {
+                    loadFormasPagamento();
+                }
+            } catch (error) {
+                console.error('Erro ao deletar forma de pagamento:', error);
+                alert('Ocorreu um erro ao conectar com o servidor.');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadFormasPagamento);
+    </script>
+</body>
+</html>

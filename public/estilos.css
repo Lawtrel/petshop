@@ -1,31 +1,71 @@
-
-form {
-    background-color: #f9f9f9;
-    padding: 20px;
-    border-radius: 10px;
-    width: 300px;
-    margin: 20px auto;
+/* General body and container styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
 }
 
+.container {
+    max-width: 900px;
+    margin: auto;
+}
 
+/* Section styles for grouping content */
+.section {
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+/* Heading styles */
+.section h2 {
+    margin-top: 0;
+}
+
+h1, h2 {
+    color: #333;
+    text-align: center;
+}
+
+p {
+    text-align: center;
+    font-size: 1.1em;
+}
+
+/* Form container styles */
+form { /* Removi o width fixo para que o formulário se ajuste ao .section */
+    background-color: #f9f9f9; /* Pode remover se o .section já tiver cor */
+    padding: 20px; /* Pode ajustar se o .section já tiver padding */
+    border-radius: 10px; /* Pode ajustar se o .section já tiver border-radius */
+    margin: 0 auto; /* Centraliza o formulário dentro do section */
+    max-width: 500px; /* Adicionado para limitar a largura do formulário */
+}
+
+/* Form group for spacing labels and inputs */
+.form-group {
+    margin-bottom: 10px;
+}
+
+/* Label styles */
 label {
     display: block;
     margin-top: 10px;
     font-weight: bold;
 }
 
-
+/* Input field styles */
 input[type="text"],
 input[type="email"],
-input[type="tel"] {
-    width: 100%;
+input[type="tel"],
+input[type="number"] { /* Adicionado input[type="number"] para produtos */
+    width: calc(100% - 16px);
     padding: 8px;
     margin-top: 4px;
     border: 1px solid #ccc;
     border-radius: 5px;
 }
 
-
+/* General button styles */
 button {
     margin-top: 15px;
     padding: 10px;
@@ -36,8 +76,67 @@ button {
     cursor: pointer;
 }
 
+/* Hover effect for submit button */
 button[type="submit"]:hover {
     background-color: #0056b3;
+}
+
+/* Specific styles for list items (both client and product) */
+.client-item, .product-item { /* Adicionado .product-item */
+    border: 1px solid #eee;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.client-item button, .product-item button { /* Adicionado .product-item */
+    margin-right: 5px;
+    padding: 5px 10px;
+    font-size: 0.9em;
+}
+
+.edit-button {
+    background-color: #ffc107;
+}
+
+.edit-button:hover {
+    background-color: #e0a800;
+}
+
+.delete-button {
+    background-color: #dc3545;
+}
+
+.delete-button:hover {
+    background-color: #bd2130;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid #eee;
+    margin: 15px 0;
+}/* General body and container styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+}
+
+/* Section styles for grouping content */
+.section {
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+/* Heading styles */
+.section h2 {
+    margin-top: 0;
 }
 
 h1, h2 {
@@ -45,8 +144,92 @@ h1, h2 {
     text-align: center;
 }
 
-
 p {
     text-align: center;
     font-size: 1.1em;
+}
+
+/* Form container styles */
+form { /* Removi o width fixo para que o formulário se ajuste ao .section */
+    background-color: #f9f9f9; /* Pode remover se o .section já tiver cor */
+    padding: 20px; /* Pode ajustar se o .section já tiver padding */
+    border-radius: 10px; /* Pode ajustar se o .section já tiver border-radius */
+    margin: 0 auto; /* Centraliza o formulário dentro do section */
+    max-width: 500px; /* Adicionado para limitar a largura do formulário */
+}
+
+/* Form group for spacing labels and inputs */
+.form-group {
+    margin-bottom: 10px;
+}
+
+/* Label styles */
+label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+/* Input field styles */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="number"] { /* Adicionado input[type="number"] para produtos */
+    width: calc(100% - 16px);
+    padding: 8px;
+    margin-top: 4px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* General button styles */
+button {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* Hover effect for submit button */
+button[type="submit"]:hover {
+    background-color: #0056b3;
+}
+
+/* Specific styles for list items (both client and product) */
+.client-item, .product-item { /* Adicionado .product-item */
+    border: 1px solid #eee;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+}
+
+.client-item button, .product-item button { /* Adicionado .product-item */
+    margin-right: 5px;
+    padding: 5px 10px;
+    font-size: 0.9em;
+}
+
+.edit-button {
+    background-color: #ffc107;
+}
+
+.edit-button:hover {
+    background-color: #e0a800;
+}
+
+.delete-button {
+    background-color: #dc3545;
+}
+
+.delete-button:hover {
+    background-color: #bd2130;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid #eee;
+    margin: 15px 0;
 }

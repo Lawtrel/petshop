@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const sql = require('mssql'); // Importa o driver do SQL Server
-const { pool, poolConnect } = require('../config/db'); // Importa o pool de conexão
+const sql = require('mssql');
+const { pool, poolConnect } = require('../config/db');
 
 // Garante que o pool de conexões está pronto antes de aceitar requisições
 poolConnect.then(() => {
@@ -13,7 +13,8 @@ poolConnect.then(() => {
  */
 router.post('/cadastrar-cliente', async (req, res) => {
     // Extrai os dados do corpo da requisição
-    const { nome, cpf, rua, estado, cep, tel, cel, email } = req.body;
+    // Mantendo os nomes das variáveis do frontend para mapeamento
+    const { nome, CPF, rua, estado, cep, telefone, celular, email } = req.body;
 
     // Inicia uma transação para garantir que ambas as inserções (cliente e contato) funcionem ou falhem juntas.
     const transaction = new sql.Transaction(pool);
@@ -21,7 +22,6 @@ router.post('/cadastrar-cliente', async (req, res) => {
         await transaction.begin();
 
         // 1. Inserir na tabela 'Cliente' e obter o ID gerado
-        // A cláusula "OUTPUT INSERTED.ClienteID" é a forma do SQL Server de retornar o ID recém-criado.
         const queryCliente = `
             INSERT INTO Cliente (Nome, CPF, Rua, Estado, CEP)
             OUTPUT INSERTED.ClienteID
@@ -31,10 +31,10 @@ router.post('/cadastrar-cliente', async (req, res) => {
         const requestCliente = new sql.Request(transaction);
         // Mapeia as variáveis para os parâmetros nomeados da query de forma segura
         requestCliente.input('nome', sql.VarChar, nome);
-        requestCliente.input('cpf', sql.Char, cpf); // Usando CHAR(11) conforme o novo BD
+        requestCliente.input('cpf', sql.Char(11), CPF); // Usando CHAR(11) conforme o novo BD
         requestCliente.input('rua', sql.VarChar, rua);
-        requestCliente.input('estado', sql.Char, estado); // Usando CHAR(2)
-        requestCliente.input('cep', sql.VarChar, cep);
+        requestCliente.input('estado', sql.Char(2), estado); // Usando CHAR(2)
+        requestCliente.input('cep', sql.VarChar(8), cep); // Usando VARCHAR(8)
 
         const resultCliente = await requestCliente.query(queryCliente);
         const idClienteGerado = resultCliente.recordset[0].ClienteID;
@@ -42,12 +42,12 @@ router.post('/cadastrar-cliente', async (req, res) => {
         // 2. Inserir na tabela 'ClienteContato' usando o ID gerado
         const queryContato = `
             INSERT INTO ClienteContato (Telefone, Celular, Email, ClienteID)
-            VALUES (@tel, @cel, @email, @idCliente);
+            VALUES (@telefone, @celular, @email, @idCliente);
         `;
         const requestContato = new sql.Request(transaction);
-        requestContato.input('tel', sql.VarChar, tel);
-        requestContato.input('cel', sql.VarChar, cel);
-        requestContato.input('email', sql.VarChar, email);
+        requestContato.input('telefone', sql.VarChar(15), telefone);
+        requestContato.input('celular', sql.VarChar(15), celular);
+        requestContato.input('email', sql.VarChar(255), email);
         requestContato.input('idCliente', sql.Int, idClienteGerado);
         
         await requestContato.query(queryContato);
@@ -93,6 +93,7 @@ router.get('/clientes', async (req, res) => {
                 Cliente c
             LEFT JOIN
                 ClienteContato cc ON c.ClienteID = cc.ClienteID
+            ORDER BY c.Nome;
         `;
         const result = await request.query(query);
         // O resultado da query fica na propriedade 'recordset'
@@ -109,11 +110,62 @@ router.get('/clientes/:id/animais', async (req, res) => {
     try {
         const request = pool.request();
         request.input('ClienteID', sql.Int, id);
-        const result = await request.query('SELECT * FROM Animal WHERE ClienteID = @ClienteID');
+        const result = await request.query('SELECT AnimalID, Nome FROM Animal WHERE ClienteID = @ClienteID'); // Seleciona apenas o ID e Nome
         res.status(200).json(result.recordset);
     } catch (error) {
         console.error('Erro ao listar animais do cliente:', error);
         res.status(500).send('Erro ao listar animais do cliente.');
+    }
+});
+
+// Rota para DELETAR um cliente e seus dados relacionados em cascata
+router.delete('/clientes/:id', async (req, res) => {
+    const { id } = req.params;
+    const transaction = new sql.Transaction(pool);
+    try {
+        await transaction.begin();
+        const request = new sql.Request(transaction);
+        request.input('ClienteID', sql.Int, id);
+
+        // Ordem de exclusão devido a chaves estrangeiras, seguindo a nova estrutura do DB:
+        // 1. Deletar registros de serviços de vendas associados a animais deste cliente
+        // (Isso assume que VendaServico.AnimalID é a FK e Animal.ClienteID é a FK)
+        // Isso requer uma subquery para pegar AnimalIDs associados a este ClienteID
+        await request.query(`
+            DELETE FROM VendaServico 
+            WHERE AnimalID IN (SELECT AnimalID FROM Animal WHERE ClienteID = @ClienteID);
+        `);
+
+        // 2. Deletar registros de produtos de vendas associados a vendas deste cliente
+        await request.query(`
+            DELETE FROM VendaProduto 
+            WHERE VendaID IN (SELECT VendaID FROM Venda WHERE ClienteID = @ClienteID);
+        `);
+
+        // 3. Deletar registros de vendas associados a este cliente
+        await request.query('DELETE FROM Venda WHERE ClienteID = @ClienteID');
+
+        // 4. Deletar registros de animais associados a este cliente
+        await request.query('DELETE FROM Animal WHERE ClienteID = @ClienteID');
+
+        // 5. Deletar registros de contato associados a este cliente
+        await request.query('DELETE FROM ClienteContato WHERE ClienteID = @ClienteID');
+
+        // 6. Finalmente, deletar o cliente da tabela Cliente
+        const result = await request.query('DELETE FROM Cliente WHERE ClienteID = @ClienteID');
+
+        if (result.rowsAffected[0] > 0) {
+            await transaction.commit();
+            res.status(200).send('Cliente e seus dados relacionados removidos com sucesso!');
+        } else {
+            await transaction.rollback();
+            res.status(404).send('Cliente não encontrado.');
+        }
+
+    } catch (error) {
+        await transaction.rollback();
+        console.error('Erro ao remover cliente:', error);
+        res.status(500).send('Erro ao remover cliente. Verifique se há dependências não tratadas.');
     }
 });
 

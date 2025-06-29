@@ -11,6 +11,7 @@ const produtosRoutes = require('./routes/produtosRoutes');
 const servicosRoutes = require('./routes/servicosRoutes');
 const vendasRoutes = require('./routes/vendasRoutes');
 const formaPagamentoRoutes = require('./routes/formaPagamentoRoutes')
+const tipoServicoRoutes = require('./routes/tipoServicoRoutes');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -22,6 +23,7 @@ app.use('/api', produtosRoutes);
 app.use('/api', servicosRoutes);
 app.use('/api', vendasRoutes);
 app.use('/api', formaPagamentoRoutes);
+app.use('/api', tipoServicoRoutes);
 
 
 app.get('/', (req, res) => {

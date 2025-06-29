@@ -7,10 +7,14 @@ const { pool } = require('../config/db');
 router.post('/servicos', async (req, res) => {
     const { NomeServico, Descricao, Preco, TipoServicoID } = req.body;
 
+    if (!NomeServico || Preco === undefined || TipoServicoID === undefined) {
+        return res.status(400).send('Nome, Preço e Tipo de Serviço são obrigatórios.');
+    }
+
     try {
         const request = pool.request();
-        request.input('NomeServico', sql.VarChar, NomeServico);
-        request.input('Descricao', sql.VarChar, Descricao);
+        request.input('NomeServico', sql.VarChar(100), NomeServico);
+        request.input('Descricao', sql.VarChar(255), Descricao);
         request.input('Preco', sql.Decimal(10, 2), Preco);
         request.input('TipoServicoID', sql.Int, TipoServicoID);
         
@@ -24,11 +28,25 @@ router.post('/servicos', async (req, res) => {
     }
 });
 
-// Rota para LER (Listar) todos os serviços
+// Rota para LER (Listar) todos os serviços com o nome do tipo de serviço
 router.get('/servicos', async (req, res) => {
     try {
         const request = pool.request();
-        const result = await request.query('SELECT * FROM Servico ORDER BY NomeServico');
+        const query = `
+            SELECT 
+                s.ServicoID, 
+                s.NomeServico, 
+                s.Descricao, 
+                s.Preco, 
+                s.TipoServicoID,
+                ts.NomeTipoServico -- Retorna o nome do tipo de serviço
+            FROM 
+                Servico s
+            JOIN 
+                TipoServico ts ON s.TipoServicoID = ts.TipoServicoID
+            ORDER BY s.NomeServico;
+        `;
+        const result = await request.query(query);
         res.status(200).json(result.recordset);
     } catch (error) {
         console.error('Erro ao listar serviços:', error);
@@ -41,11 +59,15 @@ router.put('/servicos/:id', async (req, res) => {
     const { id } = req.params;
     const { NomeServico, Descricao, Preco, TipoServicoID } = req.body;
 
+    if (!NomeServico || Preco === undefined || TipoServicoID === undefined) {
+        return res.status(400).send('Nome, Preço e Tipo de Serviço são obrigatórios.');
+    }
+
     try {
         const request = pool.request();
         request.input('ServicoID', sql.Int, id);
-        request.input('NomeServico', sql.VarChar, NomeServico);
-        request.input('Descricao', sql.VarChar, Descricao);
+        request.input('NomeServico', sql.VarChar(100), NomeServico);
+        request.input('Descricao', sql.VarChar(255), Descricao);
         request.input('Preco', sql.Decimal(10, 2), Preco);
         request.input('TipoServicoID', sql.Int, TipoServicoID);
 
@@ -70,20 +92,29 @@ router.put('/servicos/:id', async (req, res) => {
 // Rota para DELETAR um serviço
 router.delete('/servicos/:id', async (req, res) => {
     const { id } = req.params;
+    const transaction = new sql.Transaction(pool);
     try {
-        const request = pool.request();
+        await transaction.begin();
+        const request = new sql.Request(transaction);
         request.input('ServicoID', sql.Int, id);
         
+        // Primeiro, deletar registros na VendaServico que referenciam este Servico
+        await request.query('DELETE FROM VendaServico WHERE ServicoID = @ServicoID');
+
+        // Agora, deletar o serviço da tabela Servico
         const result = await request.query('DELETE FROM Servico WHERE ServicoID = @ServicoID');
         
         if (result.rowsAffected[0] > 0) {
+            await transaction.commit();
             res.status(200).send('Serviço deletado com sucesso!');
         } else {
+            await transaction.rollback();
             res.status(404).send('Serviço não encontrado.');
         }
     } catch (error) {
+        await transaction.rollback();
         console.error('Erro ao deletar serviço:', error);
-        res.status(500).send('Erro ao deletar serviço.');
+        res.status(500).send('Erro ao deletar serviço. Verifique se ele não está associado a uma venda.');
     }
 });
 
